@@ -6,19 +6,22 @@ An Arduino sketch that reads resistance-based steering wheel control buttons and
 
 The steering wheel has three resistor-ladder button groups wired to analog pins A1, A4, and A6. When a button is pressed, the analog voltage changes to a specific level. The Arduino reads these voltages, compares them against calibrated thresholds, and sends the corresponding command to the head unit via a digital output pin (pin 5).
 
+Each threshold constant represents the observed minimum ADC reading for that button during live testing. A `MARGIN` of 2 ADC counts is subtracted from each threshold at comparison time to account for slight reading variability at lower voltages.
+
 ### Button mapping
 
-| Switch | Voltage range | Action |
-|--------|--------------|--------|
-| SW1 | >213 | Track up (seek+) |
-| SW1 | 198–213 | Track down (seek-) |
-| SW1 | 171–198 | Volume up |
-| SW1 | 121–171 | Volume down |
-| SW2 | >219 | Source select (mode) |
-| SW2 | 175–219 | Voice (Siri) |
-| SW2 | 124–175 | End call |
-| SW2 | <124 | Answer call |
-| SW3 | >222 | Display |
+| Switch | Threshold constant | Observed min | Action |
+|--------|--------------------|-------------|--------|
+| SW1 | `SW1_TRACKUP_MIN` | 213 | Track up (seek+) |
+| SW1 | `SW1_TRACKDN_MIN` | 198 | Track down (seek-) |
+| SW1 | `SW1_VOLUP_MIN` | 171 | Volume up |
+| SW1 | `SW1_VOLDN_MIN` | 121 | Volume down |
+| SW2 | `SW2_SOURCE_MIN` | 219 | Source select (mode) |
+| SW2 | `SW2_ENDCALL_MIN` | 203 | End call |
+| SW2 | `SW2_VOICE_MIN` | 175 | Voice (Siri) |
+| SW2 | `SW2_ANSWER_MIN` | 124 | Answer call |
+| SW3 | `SW3_DISPLAY_MIN` | 222 | Display |
+
 
 ### Protocol
 
@@ -37,10 +40,32 @@ Volume up/down, mute, track up/down, preset up/down, source select, play/pause, 
 
 ## Hardware
 
-- Arduino (with external analog reference)
-- Steering wheel resistor-ladder button clusters connected to A1, A4, A6
-- Output signal wire to Alpine remote input on pin 5
+- Arduino Nano (ATmega328P, CH340 USB-serial) with external analog reference
+- 2010 Toyota Corolla steering wheel control module (part no. 84250-02200)
+- Output to Alpine iLX-W650 remote input via 3.5mm jack — D5 to tip, ground to ring/sleeve
+
+### Steering wheel wiring
+
+The Corolla steering wheel control module has three signal wires (sometimes labelled SW1/SW2/DISP or KEY1/KEY2 on aftermarket adapters):
+
+| Arduino pin | Signal wire | Function |
+|-------------|-------------|----------|
+| A6 | SW1 / KEY1 | Volume, track |
+| A4 | SW2 / KEY2 | Source, calls, voice |
+| A1 | DISP | Display |
+
+All three are resistor-ladder inputs — each button press pulls the line to a different voltage. A common ground from the steering wheel harness connects to Arduino GND.
+
+<img src="steering%20wheel%20controls.png" width="300">
 
 ## Debug mode
 
-Define `DEBUG` to enable periodic serial output of raw ADC values when no button is pressed. Command bitstreams are always printed to serial at 115200 baud.
+Enable debug output by uncommenting `#define DEBUG` in `config.h`. This enables:
+- Periodic serial output of raw ADC values (every 1s when no button is pressed)
+- Command bitstream printing after each transmission
+
+Serial runs at 115200 baud.
+
+## VS Code setup
+
+A `.vscode/c_cpp_properties.json` is included pointing IntelliSense at the Arduino AVR core headers (`Arduino.h`, etc.). Requires the [C/C++ extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) by Microsoft.
