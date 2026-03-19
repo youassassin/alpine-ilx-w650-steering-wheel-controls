@@ -109,7 +109,7 @@ void AlpineRemote::writeEnd(char *_bitstream, uint8_t &pos, bool isLow)
 {
   for (int j = 7; j >= 0; j--)
   {
-    bool bit = !(_cmdEnd[isLow] & (1 << j));
+    bool bit = _cmdEnd[isLow] & (1 << j);
     digitalWrite(_pin, bit ? HIGH : LOW);
     _bitstream[pos++] = bit ? '1' : '0';
     AlpineRemote::writeDefault();
@@ -128,7 +128,7 @@ void AlpineRemote::writeCommand(uint16_t command)
 
   AlpineRemote::writeStart(buf, pos);
   AlpineRemote::writeMid(buf, pos, command);
-  AlpineRemote::writeEnd(buf, pos, (command >> 15) & 1);
+  AlpineRemote::writeEnd(buf, pos, !(command & 1));
   buf[pos] = '\0';
 
 #ifdef DEBUG
