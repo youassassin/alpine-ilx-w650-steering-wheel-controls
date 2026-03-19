@@ -28,15 +28,14 @@ public:
   void writeActivateSiri();
   void writeActivateMenu();
   void writeDefault();
-  void writeStart(String *_bitstream);
-  void writeMid(String *_bitstream, uint16_t command);
-  void writeEnd(String *_bitstream, bool isLow);
+  void writeStart(char *_bitstream, uint8_t &pos);
+  void writeMid(char *_bitstream, uint8_t &pos, uint16_t command);
+  void writeEnd(char *_bitstream, uint8_t &pos, bool isLow);
 
   void writeCommand(uint16_t command);
 
 private:
   uint8_t _pin;
-  String _bitstream;
 };
 
 #endif

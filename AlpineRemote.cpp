@@ -1,3 +1,4 @@
+#include "config.h"
 #include "AlpineRemote.h"
 
 const uint8_t _cmdStart[3] = {
@@ -6,13 +7,10 @@ const uint8_t _cmdStart[3] = {
 const uint8_t _cmdEnd[2] = {
     0x55, 0xD5};
 
-const bool isDebug = true;
-
 AlpineRemote::AlpineRemote(uint8_t pin)
 {
   pinMode(pin, OUTPUT);
   _pin = pin;
-  _bitstream = "";
 }
 
 void AlpineRemote::writeVolumeUp()
@@ -82,98 +80,61 @@ void AlpineRemote::writeDefault()
   delayMicroseconds(500);
 }
 
-void AlpineRemote::writeStart(String *_bitstream)
+void AlpineRemote::writeStart(char *_bitstream, uint8_t &pos)
 {
-  // Send the 3 command init bytes.
-  // FIXME: These should be sent in reverse. See below.
   for (byte i = 0; i < 3; i++)
   {
-    byte data = _cmdStart[i];
     for (int j = 7; j >= 0; j--)
     {
-      if (_cmdStart[i] & (1 << j))
-      {
-        digitalWrite(_pin, HIGH);
-        *_bitstream += "1";
-      }
-      else
-      {
-        digitalWrite(_pin, LOW);
-        *_bitstream += "0";
-      }
+      bool bit = _cmdStart[i] & (1 << j);
+      digitalWrite(_pin, bit ? HIGH : LOW);
+      _bitstream[pos++] = bit ? '1' : '0';
       AlpineRemote::writeDefault();
     }
   }
 }
 
-void AlpineRemote::writeMid(String *_bitstream, uint16_t command)
+void AlpineRemote::writeMid(char *_bitstream, uint8_t &pos, uint16_t command)
 {
-  // Send the 2 command bytes. Because of the way the microprocessor stores variables,
-  // we're doing it in reverse, so that the bitstream sent is the assumed one.
   for (int j = 15; j >= 0; j--)
   {
-    if (command & (1 << j))
-    {
-      digitalWrite(_pin, HIGH);
-      *_bitstream += "1";
-    }
-    else
-    {
-      digitalWrite(_pin, LOW);
-      *_bitstream += "0";
-    }
+    bool bit = command & (1 << j);
+    digitalWrite(_pin, bit ? HIGH : LOW);
+    _bitstream[pos++] = bit ? '1' : '0';
     AlpineRemote::writeDefault();
   }
 }
 
-void AlpineRemote::writeEnd(String *_bitstream, bool isLow)
+void AlpineRemote::writeEnd(char *_bitstream, uint8_t &pos, bool isLow)
 {
-  // Send the end of command byte. The last bit is a checksum based on the last bit of
-  // the command bytes above, but instead of changing the bit, we're having two end
-  // bytes and just choose the correct one depending on the value of whichEnd.
   for (int j = 7; j >= 0; j--)
   {
-    if (!_cmdEnd[isLow] & (1 << j))
-    {
-      digitalWrite(_pin, HIGH);
-      *_bitstream += "1";
-    }
-    else
-    {
-      digitalWrite(_pin, LOW);
-      *_bitstream += "0";
-    }
+    bool bit = !(_cmdEnd[isLow] & (1 << j));
+    digitalWrite(_pin, bit ? HIGH : LOW);
+    _bitstream[pos++] = bit ? '1' : '0';
     AlpineRemote::writeDefault();
   }
 }
 
 void AlpineRemote::writeCommand(uint16_t command)
 {
+  char buf[33];
+  uint8_t pos = 0;
 
-  // FIXME: This should be sent asynchronously using timer instead.
-  //        Also, the timings should probably match up with NEC RF
-
-  // whichEnd is used to decide which end byte should be sent based on the command
-  boolean whichEnd = 0;
-
-  _bitstream = "";
-
-  // First write 8ms high
   digitalWrite(_pin, HIGH);
   delay(8);
-  // Send 4.5ms low
   digitalWrite(_pin, LOW);
   delayMicroseconds(4500);
 
-  AlpineRemote::writeStart(&_bitstream);
-  AlpineRemote::writeMid(&_bitstream, command);
-  AlpineRemote::writeEnd(&_bitstream, (command >> 15) & 1);
+  AlpineRemote::writeStart(buf, pos);
+  AlpineRemote::writeMid(buf, pos, command);
+  AlpineRemote::writeEnd(buf, pos, (command >> 15) & 1);
+  buf[pos] = '\0';
 
-  if (isDebug == true)
-  {
-    Serial.print(_bitstream);
-    Serial.print(" (");
-    Serial.print(strtol(_bitstream.c_str(), NULL, 2), HEX);
-    Serial.println(")");
-  }
+#ifdef DEBUG
+  Serial.print(buf);
+  Serial.print(F(" ("));
+  Serial.print(strtol(buf, NULL, 2), HEX);
+  Serial.println(F(")"));
+#endif
 }
