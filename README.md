@@ -35,13 +35,13 @@ The `AlpineRemote` library sends commands over a single digital pin using a prop
 | Preamble | 9ms HIGH, 4.5ms LOW | 8ms HIGH, 4.5ms LOW |
 | Address | 8-bit address + 8-bit inverse | 3 fixed start bytes (`0xD7`, `0xDB`, `0xAB`) |
 | Command | 8-bit command + 8-bit inverse | 16-bit command (MSB first) |
-| End | Implicit (stop bit) | 1 explicit end byte, chosen by MSB of command |
+| End | Implicit (stop bit) | 1 explicit end byte: inverse of last command bit + fixed `1010101` trailer |
 | Bit clock | Variable width (562.5µs) | Fixed 500µs HIGH + 500µs LOW per bit |
 | Repeat | Dedicated repeat frame | None |
 
 In NEC, a `1` bit is distinguished from a `0` by pulse width (562.5µs vs 1.6875ms LOW after each HIGH pulse). Alpine instead uses a fixed 500µs HIGH/LOW clock for every bit, relying on the logic level of the HIGH pulse itself to encode the bit value.
 
-The end byte acts as a simple checksum — two candidates exist (`0x55` and `0xD5`) and the one chosen is determined by the MSB of the command word. The end byte bits are also inverted before transmission.
+The command is effectively 17 bits — the 17th bit is always the inverse of the 16th (last) command bit. The end byte is that 17th bit prepended to a fixed trailer `1010101`, giving either `0x55` or `0xD5`.
 
 **Frame structure:**
 ```
