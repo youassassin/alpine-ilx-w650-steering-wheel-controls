@@ -25,14 +25,28 @@ Each threshold constant represents the observed minimum ADC reading for that but
 
 ### Protocol
 
-The `AlpineRemote` library sends commands using a proprietary Alpine wired remote protocol over a single digital pin:
-- 8ms HIGH preamble
-- 4.5ms LOW gap
-- 3 start bytes (`0xD7`, `0xDB`, `0xAB`)
-- 2 command bytes (16-bit, MSB first)
-- 1 end byte (chosen based on MSB of command as a simple checksum)
+The `AlpineRemote` library sends commands over a single digital pin using a proprietary wired protocol that is structurally similar to the NEC IR protocol but with several differences.
 
-Each bit is clocked with a 500µs HIGH/LOW pulse.
+**NEC vs Alpine comparison:**
+
+| | NEC (IR) | Alpine (wired) |
+|-|----------|----------------|
+| Medium | Infrared (38kHz carrier) | Wired, DC logic level |
+| Preamble | 9ms HIGH, 4.5ms LOW | 8ms HIGH, 4.5ms LOW |
+| Address | 8-bit address + 8-bit inverse | 3 fixed start bytes (`0xD7`, `0xDB`, `0xAB`) |
+| Command | 8-bit command + 8-bit inverse | 16-bit command (MSB first) |
+| End | Implicit (stop bit) | 1 explicit end byte, chosen by MSB of command |
+| Bit clock | Variable width (562.5µs) | Fixed 500µs HIGH + 500µs LOW per bit |
+| Repeat | Dedicated repeat frame | None |
+
+In NEC, a `1` bit is distinguished from a `0` by pulse width (562.5µs vs 1.6875ms LOW after each HIGH pulse). Alpine instead uses a fixed 500µs HIGH/LOW clock for every bit, relying on the logic level of the HIGH pulse itself to encode the bit value.
+
+The end byte acts as a simple checksum — two candidates exist (`0x55` and `0xD5`) and the one chosen is determined by the MSB of the command word. The end byte bits are also inverted before transmission.
+
+**Frame structure:**
+```
+[8ms HIGH] [4.5ms LOW] [0xD7] [0xDB] [0xAB] [16-bit command] [end byte]
+```
 
 ### Supported commands
 
